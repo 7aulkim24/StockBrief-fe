@@ -1,11 +1,20 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getRecommendationCandidate, getStock, getStockEvidence } from "@/lib/api";
+import { ApiError, getRecommendationCandidate, getStock, getStockEvidence } from "@/lib/api";
 
 import StockPage from "./[ticker]/page";
 
 vi.mock("@/lib/api", () => ({
+  ApiError: class ApiError extends Error {
+    constructor(
+      message: string,
+      public readonly status: number,
+    ) {
+      super(message);
+      this.name = "ApiError";
+    }
+  },
   getRecommendationCandidate: vi.fn(),
   getStock: vi.fn(),
   getStockEvidence: vi.fn(),
@@ -103,9 +112,10 @@ describe("StockPage", () => {
     expect(screen.getByRole("heading", { name: "점수 구성" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "리스크와 확인할 점" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "공시·뉴스·재무·가격 근거" })).not.toBeNull();
-    expect(screen.getAllByText(/근거 ID:/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/발행일:/)).not.toBeNull();
-    expect(screen.getByText(/기준일:/)).not.toBeNull();
+    expect(screen.getByText("연결 근거 1개")).not.toBeNull();
+    expect(screen.queryByText(/근거 ID:/)).toBeNull();
+    expect(screen.getByText(/발행일 2026-06-26/)).not.toBeNull();
+    expect(screen.getAllByText(/기준일 2026-06-26/).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "원문 보기" }).getAttribute("href")).toBe(
       "https://example.com/news",
     );
@@ -118,5 +128,58 @@ describe("StockPage", () => {
     expect(screen.queryByText(/weight/)).toBeNull();
     expect(screen.queryByText(/evidence:/)).toBeNull();
     expect(screen.queryByRole("link", { name: "source" })).toBeNull();
+  });
+
+  it("renders basic stock detail when recommendation candidate data is unavailable", async () => {
+    mockedGetRecommendationCandidate.mockRejectedValue(new ApiError("candidate not found", 404));
+    mockedGetStock.mockResolvedValue({
+      ticker: "005930",
+      name: "삼성전자",
+      name_en: null,
+      market: "KOSPI",
+      sector: "반도체",
+      industry: null,
+      listing_date: null,
+      is_active: true,
+      identifiers: [],
+    });
+    mockedGetStockEvidence.mockResolvedValue({
+      ticker: "005930",
+      evidence: [],
+      message: "표시할 근거가 아직 없습니다.",
+    });
+
+    render(await StockPage({ params: Promise.resolve({ ticker: "005930" }) }));
+
+    expect(screen.getByRole("heading", { name: "삼성전자" })).not.toBeNull();
+    expect(screen.getAllByText("점수 산정 필요").length).toBeGreaterThan(0);
+    expect(screen.getByText("추천 후보 점수는 아직 산정되지 않았지만 기본 종목 정보와 공개 근거는 확인할 수 있습니다.")).not.toBeNull();
+    expect(screen.queryByText("데이터를 불러오지 못했습니다.")).toBeNull();
+  });
+
+  it("keeps the error state when recommendation candidate data fails with non-404", async () => {
+    mockedGetRecommendationCandidate.mockRejectedValue(new ApiError("candidate failed", 500));
+    mockedGetStock.mockResolvedValue({
+      ticker: "005930",
+      name: "삼성전자",
+      name_en: null,
+      market: "KOSPI",
+      sector: "반도체",
+      industry: null,
+      listing_date: null,
+      is_active: true,
+      identifiers: [],
+    });
+    mockedGetStockEvidence.mockResolvedValue({
+      ticker: "005930",
+      evidence: [],
+      message: "표시할 근거가 아직 없습니다.",
+    });
+
+    render(await StockPage({ params: Promise.resolve({ ticker: "005930" }) }));
+
+    expect(screen.getByText("데이터를 불러오지 못했습니다.")).not.toBeNull();
+    expect(screen.queryByRole("heading", { name: "삼성전자" })).toBeNull();
+    expect(screen.queryByText("점수 산정 필요")).toBeNull();
   });
 });
