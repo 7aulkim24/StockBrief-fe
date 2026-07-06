@@ -298,7 +298,7 @@ function fallbackCandidate(
     risk_tags: ["점수 산정 필요"],
     evidence_level: evidence.evidence.length >= 2 ? "medium" : "weak",
     evidence_count: evidence.evidence.length,
-    missing_data: ["recommendation_score"],
+    missing_data: ["score_inputs"],
     data_freshness: { as_of: asOf },
     disclaimer: "공개 데이터 기반 검토 후보이며 최종 투자 판단은 사용자에게 있습니다.",
   };
@@ -346,14 +346,25 @@ function formatMissingData(value: MissingDataItem[]) {
   }
 
   const items = value.map((item) => {
-    if (typeof item === "string") return item;
+    if (typeof item === "string") return missingDataLabel(item);
     if (item && typeof item === "object" && "field" in item) {
-      return String(item.field);
+      return missingDataLabel(String(item.field));
     }
     return "확인 필요 데이터";
   });
 
   return { summary: `${items.length}개 확인 필요`, items };
+}
+
+function missingDataLabel(field: string): string {
+  const labels: Record<string, string> = {
+    score_inputs: "추천 점수 산정 입력",
+    "growth.inputs": "성장성 입력",
+    "disclosure_event.inputs": "공시 이벤트 입력",
+    "price_metrics.market_cap": "시가총액",
+    "price_metrics.volume": "거래량",
+  };
+  return labels[field] ?? field;
 }
 
 function evidenceStatusLabel(status: string): string {
