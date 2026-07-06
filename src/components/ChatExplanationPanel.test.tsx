@@ -61,6 +61,38 @@ describe("ChatExplanationPanel", () => {
     expect(screen.queryByText(/^session:/)).toBeNull();
   });
 
+  it("does not request an explanation for a blank question", () => {
+    render(<ChatExplanationPanel ticker="005930" />);
+
+    const question = screen.getByLabelText(/질문/);
+    const button = screen.getByRole("button", { name: "왜 추천됐나요?" });
+
+    fireEvent.change(question, { target: { value: "   " } });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("질문을 입력하면 설명을 요청할 수 있습니다.")).not.toBeNull();
+
+    fireEvent.click(button);
+    expect(mockedPostChat).not.toHaveBeenCalled();
+    expect(mockedPostAuthenticatedChat).not.toHaveBeenCalled();
+  });
+
+  it("trims the question before sending it to the chat API", async () => {
+    render(<ChatExplanationPanel ticker="005930" />);
+
+    fireEvent.change(screen.getByLabelText(/질문/), {
+      target: { value: "  근거를 더 자세히 설명해줘  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "왜 추천됐나요?" }));
+
+    await waitFor(() => {
+      expect(mockedPostChat).toHaveBeenCalledWith({
+        ticker: "005930",
+        message: "근거를 더 자세히 설명해줘",
+        title: "005930 추천 이유 설명",
+      });
+    });
+  });
+
   it("does not render citation source links with unsafe URL schemes", async () => {
     mockedPostChat.mockResolvedValue(
       chatResponse({
@@ -98,7 +130,7 @@ describe("ChatExplanationPanel", () => {
     mockedPostChat.mockResolvedValue(
       chatResponse({
         answer:
-          "1. **재무 안정성** [ev_005930_news](https://example.com/news?ref=naver)\nhttps://example.com/raw",
+          "1. **재무 안정성** [ev_005930_news](https://example.com/news_(naver))\nhttps://example.com/raw",
       }),
     );
 
@@ -112,6 +144,7 @@ describe("ChatExplanationPanel", () => {
       .map((element) => element.textContent)
       .join("\n");
     expect(renderedEvidenceText).not.toContain("https://");
+    expect(renderedEvidenceText).not.toContain(")");
     expect(screen.queryByText(/\*\*/)).toBeNull();
   });
 

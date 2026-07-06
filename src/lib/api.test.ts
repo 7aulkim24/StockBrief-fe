@@ -89,7 +89,7 @@ describe("candidate API adapters", () => {
     );
   });
 
-  it("loads detail data from the public recommendation candidate endpoint", async () => {
+  it("loads detail data from the canonical recommendation candidate endpoint", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(

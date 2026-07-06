@@ -77,6 +77,20 @@ pnpm run typecheck  # TypeScript 타입 체크
 pnpm run build      # 프로덕션 빌드
 ```
 
+Hosted Amplify 화면에서 추천 후보, 상세 근거, 종목 검색, guest 관심종목,
+계정, 인증 callback 화면이 실제로 보이는지 확인할 때는 다음 smoke를 사용한다.
+결과에는 HTTP 상태와 화면 요소 확인값만 남기며, raw HTML, provider 원문,
+localStorage payload, token, auth code는 출력하지 않는다.
+
+```bash
+STOCKBRIEF_HOSTED_URL="https://main.d20hgo2k8atldu.amplifyapp.com" \
+pnpm run smoke:hosted-evidence -- \
+  --ticker 005930 \
+  --search-query 삼성전자 \
+  --search-result-name 삼성전자 \
+  --search-result-ticker 005930
+```
+
 ## 브랜치 정책
 
 - `main`: 보호 브랜치, 직접 push 금지
@@ -93,6 +107,7 @@ API 계약은 BE 레포에서 먼저 고정한다. `docs/engineering/API_CONTRAC
 
 - Backend canonical API base: `/v1`
 - Recommendation candidates: `GET /v1/recommendations/candidates`
+- Recommendation candidate detail: `GET /v1/recommendations/candidates/{ticker}`
 
 ## 관련 레포
 
