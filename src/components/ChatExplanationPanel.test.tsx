@@ -52,6 +52,7 @@ describe("ChatExplanationPanel", () => {
     expect(screen.getByText("공개 데이터 기준 설명입니다.")).not.toBeNull();
     expect(screen.getByText("이 정보는 투자 조언이 아니며 원문 확인이 필요합니다.")).not.toBeNull();
     expect(screen.getByText("사용된 근거")).not.toBeNull();
+    expect(screen.getByText(/삼성전자 뉴스/)).not.toBeNull();
     expect(screen.getByText(/2026-06-23/)).not.toBeNull();
     expect(screen.getByRole("link", { name: "원문" }).getAttribute("href")).toBe(
       "https://example.com/news",
@@ -91,6 +92,27 @@ describe("ChatExplanationPanel", () => {
     expect(await screen.findByText("ev_javascript_url")).not.toBeNull();
     expect(screen.getByText("ev_data_url")).not.toBeNull();
     expect(screen.queryByRole("link", { name: "원문" })).toBeNull();
+  });
+
+  it("renders legacy markdown answer links as compact text", async () => {
+    mockedPostChat.mockResolvedValue(
+      chatResponse({
+        answer:
+          "1. **재무 안정성** [ev_005930_news](https://example.com/news?ref=naver)\nhttps://example.com/raw",
+      }),
+    );
+
+    render(<ChatExplanationPanel ticker="005930" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "왜 추천됐나요?" }));
+
+    expect(await screen.findByText(/재무 안정성/)).not.toBeNull();
+    const renderedEvidenceText = screen
+      .getAllByText(/ev_005930_news/)
+      .map((element) => element.textContent)
+      .join("\n");
+    expect(renderedEvidenceText).not.toContain("https://");
+    expect(screen.queryByText(/\*\*/)).toBeNull();
   });
 
   it("uses authenticated chat and keeps the returned session for the next request", async () => {
